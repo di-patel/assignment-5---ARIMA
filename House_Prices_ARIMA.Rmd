@@ -1,0 +1,75 @@
+---
+title: "House_Sales_ARIMA.Rmd"
+output: html_document
+date: "2025-04-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r libraries, message=FALSE}
+library(fpp)
+library(fpp2)
+library(forecast)
+```
+
+
+```{r, fig.width=8, fig.height=4}
+raw_sales <- read.csv("/Users/diyapatel/Downloads/archive 2/raw_sales.csv", header = FALSE)
+raw_sales <- raw_sales[-1, ]  # Remove header row
+colnames(raw_sales) <- c("Date", "PostCode", "Price", "PropertyType", "Bedrooms")
+raw_sales <- na.omit(raw_sales)  # Remove any rows with NA values
+
+# Convert Price to numeric (essential for time series)
+raw_sales$Price <- as.numeric(as.character(raw_sales$Price))
+
+# Remove rows with invalid price values
+raw_sales <- raw_sales[!is.na(raw_sales$Price), ]
+
+# Create time series of house prices (quarterly)
+ts_price <- ts(raw_sales$Price, start = c(2007, 1), frequency = 4)
+
+# Plot original time series
+plot(ts_price, main = "House Prices Over Time", ylab = "Price", xlab = "Year")
+
+# Determine number of differences needed
+ndiffs(ts_price)
+
+# Display time series diagnostics
+tsdisplay(ts_price)
+
+# First differencing
+ts_pricediff1 <- diff(ts_price, differences = 1)
+plot(ts_pricediff1, main = "First Differenced Series", ylab = "Differenced Price", xlab = "Year")
+
+# Fit ARIMA model
+auto_fit <- auto.arima(ts_price, trace = TRUE, stepwise = FALSE)
+auto_fit
+
+# Plot forecast with 99.5% confidence interval
+plot(forecast(auto_fit, h = 5, level = c(99.5)), main = "ARIMA Forecast with 99.5% CI")
+
+# Residual Analysis
+Acf(auto_fit$residuals, main = "ACF of Residuals")
+Box.test(residuals(auto_fit), lag = 20, type = "Ljung")
+plot.ts(residuals(auto_fit), main = "Residuals over Time", ylab = "Residuals")
+hist(auto_fit$residuals, main = "Histogram of Residuals", xlab = "Residuals")
+tsdiag(auto_fit)
+
+# Forecast the next 5 quarters
+forecast_arima <- forecast(auto_fit, h = 5)
+forecast_arima
+
+# Plot the forecast
+autoplot(forecast_arima) +
+  ggtitle("ARIMA Forecast: Next 5 Quarters") +
+  xlab("Time") +
+  ylab("House Prices") +
+  theme_minimal()
+```
+
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
